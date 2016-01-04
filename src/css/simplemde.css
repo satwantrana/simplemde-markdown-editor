@@ -1,3 +1,15 @@
+.emoji {
+	width: 1em;
+	height: 1em;
+	vertical-align: baseline;
+}
+
+img {
+	border: 0;
+	-ms-interpolation-mode: bicubic;
+	vertical-align: middle;
+}
+
 .CodeMirror {
 	height: auto;
 	min-height: 300px;

@@ -11,7 +11,6 @@ require("codemirror/mode/xml/xml.js");
 require("spell-checker");
 var marked = require("marked");
 
-
 // Some variables
 var isMac = /Mac/.test(navigator.platform);
 
@@ -324,6 +323,12 @@ function redo(editor) {
 	cm.focus();
 }
 
+function renderPreview(editor, preview) {
+	preview.innerHTML = editor.options.previewRender(editor.value(), preview);
+	if(editor.options && editor.options.renderingConfig && editor.options.renderingConfig.renderEmoji == true && window.emojify) {
+		window.emojify.run(preview);
+	}
+}
 
 /**
  * Toggle side by side preview
@@ -366,11 +371,11 @@ function toggleSideBySide(editor) {
 	}
 
 	// Start preview with the current text
-	preview.innerHTML = editor.options.previewRender(editor.value(), preview);
+	renderPreview(editor, preview);
 
 	// Updates preview
 	cm.on("update", function() {
-		preview.innerHTML = editor.options.previewRender(editor.value(), preview);
+		renderPreview(editor, preview);
 	});
 }
 
@@ -405,7 +410,8 @@ function togglePreview(editor) {
 		toolbar.className += " active";
 		toolbar_div.className += " disabled-for-preview";
 	}
-	preview.innerHTML = editor.options.previewRender(editor.value(), preview);
+
+	renderPreview(editor, preview);
 
 	// Turn off side by side if needed
 	var sidebyside = cm.getWrapperElement().nextSibling;
@@ -954,6 +960,14 @@ SimpleMDE.prototype.markdown = function(text) {
 		// Initialize
 		var markedOptions = {};
 
+		if(this.options && this.options.renderingConfig && this.options.renderingConfig.renderLatex == true) {
+			text = text.replace(/<latex>((.*?\n)*?.*?)<\/latex>/ig, function(a, b) {
+				return "<span lang=\"latex\"> <img src=\"http://latex.codecogs.com/png.latex?" + encodeURIComponent(b) + "\" /> </span>";
+			});
+			text = text.replace(/```latex((.*?\n)*?.*?)```/ig, function(a, b) {
+				return "<div lang=\"latex\"> <img src=\"http://latex.codecogs.com/png.latex?" + encodeURIComponent(b) + "\" /> </div>";
+			});
+		}
 
 		// Update options
 		if(this.options && this.options.renderingConfig && this.options.renderingConfig.singleLineBreaks !== false) {
@@ -961,7 +975,20 @@ SimpleMDE.prototype.markdown = function(text) {
 		}
 
 		if(this.options && this.options.renderingConfig && this.options.renderingConfig.codeSyntaxHighlighting === true && window.hljs) {
-			markedOptions.highlight = function(code) {
+			// Because highlight.js is a bit awkward at times
+			var languageOverrides = {
+				js: "javascript",
+				html: "xml"
+			};
+			markedOptions.highlight = function(code, lang) {
+				if(languageOverrides[lang]) lang = languageOverrides[lang];
+				if(lang && window.hljs.getLanguage(lang)) {
+					try {
+						return window.hljs.highlight(lang, code).value;
+					} catch(e) {
+						return window.hljs.highlightAuto(code).value;
+					}
+				}
 				return window.hljs.highlightAuto(code).value;
 			};
 		}
